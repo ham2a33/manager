@@ -1,12 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Send, MessageCircle, Instagram } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TodoBackendNotice } from "@/components/shared/todo-backend-notice";
+import { createChannel, listChannels, updateChannel } from "@/lib/api/channels";
+import type { ChannelConfig } from "@/lib/api/channels";
 
 const CHANNELS = [
   {
@@ -33,18 +36,55 @@ const CHANNELS = [
 ] as const;
 
 export function ChannelSettings() {
+  const queryClient = useQueryClient();
+  const [channels, setChannels] = useState<Record<string, ChannelConfig | null>>({});
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    void (async () => {
+      const data = await listChannels();
+      const map: Record<string, ChannelConfig | null> = {};
+      const valuesMap: Record<string, string> = {};
+      data.forEach((channel) => {
+        map[channel.platform] = channel;
+        valuesMap[channel.platform] = channel.external_id ?? "";
+      });
+      CHANNELS.forEach((channel) => {
+        if (!map[channel.key]) {
+          map[channel.key] = null;
+        }
+        if (!valuesMap[channel.key]) {
+          valuesMap[channel.key] = "";
+        }
+      });
+      setChannels(map);
+      setValues(valuesMap);
+    })();
+  }, []);
+
+  const handleSave = async (platform: string) => {
+    const existing = channels[platform];
+    const value = values[platform] ?? "";
+    setSaving((prev) => ({ ...prev, [platform]: true }));
+    try {
+      if (existing) {
+        await updateChannel(existing.id, { external_id: value || null, status: value ? "connected" : "disconnected" });
+      } else {
+        const created = await createChannel({ platform, external_id: value || null, status: value ? "connected" : "disconnected" });
+        setChannels((prev) => ({ ...prev, [platform]: created }));
+      }
+      await queryClient.invalidateQueries({ queryKey: ["channels"] });
+    } finally {
+      setSaving((prev) => ({ ...prev, [platform]: false }));
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <TodoBackendNotice>
-        TODO(backend): модель <code>ChannelRecord</code> существует в{" "}
-        <code>app/database/models/domain.py</code>, но нет ни одного роута для чтения/сохранения
-        настроек каналов (нет <code>GET/POST /channels</code>). Формы ниже показывают целевой UI и
-        задизейблены до появления эндпоинтов — см. <code>src/lib/api/channels.ts</code>. Входящие
-        сообщения уже принимаются через существующий <code>POST /webhooks/{"{channel}"}</code>.
-      </TodoBackendNotice>
-
       {CHANNELS.map((channel) => {
         const Icon = channel.icon;
+        const config = channels[channel.key];
         return (
           <Card key={channel.key}>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -57,16 +97,22 @@ export function ChannelSettings() {
                   <CardDescription>Webhook: /webhooks/{channel.key}</CardDescription>
                 </div>
               </div>
-              <Badge variant="muted">Не настроено</Badge>
+              <Badge variant={config?.status === "connected" ? "success" : "muted"}>
+                {config?.status === "connected" ? "Подключено" : "Не настроено"}
+              </Badge>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-2">
                 <Label>{channel.field}</Label>
-                <Input placeholder="Пока недоступно" disabled />
+                <Input
+                  value={values[channel.key] ?? ""}
+                  onChange={(e) => setValues((prev) => ({ ...prev, [channel.key]: e.target.value }))}
+                  placeholder="Введите значение"
+                />
               </div>
               <div className="flex justify-end">
-                <Button size="sm" disabled title="Нет API для сохранения настроек канала">
-                  Подключить
+                <Button size="sm" onClick={() => void handleSave(channel.key)} disabled={saving[channel.key]}>
+                  {saving[channel.key] ? "Сохранение..." : config ? "Сохранить" : "Подключить"}
                 </Button>
               </div>
             </CardContent>

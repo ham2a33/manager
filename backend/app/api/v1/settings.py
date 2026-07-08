@@ -2,35 +2,39 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import current_context
-from app.api.v1.schemas import CompanyResponse, CompanyUpdate
+from app.api.v1.schemas import SettingsResponse, SettingsUpdate
 from app.database.database import get_session
 from app.database.repositories.company import CompanyRepository
 
 router = APIRouter()
 
 
-@router.get("/{company_id}", response_model=CompanyResponse)
-async def get_company(company_id: str, session: AsyncSession = Depends(get_session)):
+@router.get("", response_model=SettingsResponse)
+async def get_settings(context=Depends(current_context), session: AsyncSession = Depends(get_session)):
     repository = CompanyRepository(session)
-    company = await repository.get_by_id(company_id)
+    company = await repository.get_by_id(context["tenant_id"])
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
-    return company
+    return SettingsResponse(
+        company_id=company.id,
+        name=company.name,
+        email=company.email,
+        phone=company.phone,
+        language=company.language,
+        ai_prompt=company.ai_prompt,
+    )
 
 
-@router.patch("/{company_id}", response_model=CompanyResponse)
-async def update_company(
-    company_id: str,
-    payload: CompanyUpdate,
+@router.patch("", response_model=SettingsResponse)
+async def update_settings(
+    payload: SettingsUpdate,
     context=Depends(current_context),
     session: AsyncSession = Depends(get_session),
 ):
     repository = CompanyRepository(session)
-    company = await repository.get_by_id(company_id)
+    company = await repository.get_by_id(context["tenant_id"])
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
-    if company.id != context["tenant_id"]:
-        raise HTTPException(status_code=403, detail="Forbidden")
 
     if payload.name is not None:
         company.name = payload.name
@@ -47,5 +51,11 @@ async def update_company(
 
     await session.commit()
     await session.refresh(company)
-    return company
-
+    return SettingsResponse(
+        company_id=company.id,
+        name=company.name,
+        email=company.email,
+        phone=company.phone,
+        language=company.language,
+        ai_prompt=company.ai_prompt,
+    )

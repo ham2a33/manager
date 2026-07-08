@@ -34,3 +34,16 @@ async def create_document(payload: KnowledgeCreate, context=Depends(current_cont
 async def search(payload: KnowledgeSearchRequest, context=Depends(current_context), session: AsyncSession = Depends(get_session)):
     return await KnowledgeService(session).search(context["tenant_id"], payload.query, payload.limit)
 
+
+@router.delete("/{document_id}", status_code=204)
+async def delete_document(document_id: str, context=Depends(current_context), session: AsyncSession = Depends(get_session)):
+    repository = KnowledgeRepository(session)
+    document = await repository.get_by_id(document_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Knowledge document not found")
+    if document.company_id != context["tenant_id"]:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    await session.delete(document)
+    await session.commit()
+

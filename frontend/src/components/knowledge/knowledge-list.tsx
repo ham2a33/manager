@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FileText, Eye, Trash2, Search, Upload } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,14 +11,17 @@ import { useKnowledgeList, useKnowledgeSearch } from "@/hooks/useKnowledge";
 import { KnowledgeUploadDialog } from "@/components/knowledge/knowledge-upload-dialog";
 import { KnowledgeViewDialog } from "@/components/knowledge/knowledge-view-dialog";
 import { formatDate } from "@/lib/utils";
+import { deleteKnowledgeDocument } from "@/lib/api/knowledge";
 import type { KnowledgeResponse } from "@/lib/api/types";
 
 export function KnowledgeList() {
+  const queryClient = useQueryClient();
   const { data: documents, isLoading } = useKnowledgeList();
   const knowledgeSearch = useKnowledgeSearch();
   const [query, setQuery] = useState("");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [viewing, setViewing] = useState<KnowledgeResponse | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const results = knowledgeSearch.data;
   const list = query.trim() && results ? results : documents ?? [];
@@ -26,6 +30,16 @@ export function KnowledgeList() {
     setQuery(value);
     if (value.trim().length > 1) {
       knowledgeSearch.mutate(value);
+    }
+  };
+
+  const handleDelete = async (docId: string) => {
+    setDeletingId(docId);
+    try {
+      await deleteKnowledgeDocument(docId);
+      await queryClient.invalidateQueries({ queryKey: ["knowledge"] });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -84,8 +98,8 @@ export function KnowledgeList() {
                   variant="ghost"
                   size="sm"
                   className="text-destructive hover:text-destructive"
-                  title="Удаление недоступно: нет DELETE /knowledge/{id} на backend"
-                  disabled
+                  onClick={() => void handleDelete(doc.id)}
+                  disabled={deletingId === doc.id}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>

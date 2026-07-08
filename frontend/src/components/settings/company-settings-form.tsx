@@ -1,17 +1,53 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Building2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TodoBackendNotice } from "@/components/shared/todo-backend-notice";
 import { useCompany } from "@/hooks/useCompany";
+import { updateCompanySettings } from "@/lib/api/companies";
 
 export function CompanySettingsForm() {
+  const queryClient = useQueryClient();
   const { data: company, isLoading } = useCompany();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [language, setLanguage] = useState("");
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (company) {
+      setName(company.name ?? "");
+      setEmail(company.email ?? "");
+      setPhone(company.phone ?? "");
+      setLanguage(company.language ?? "");
+      setAiPrompt(company.ai_prompt ?? "");
+    }
+  }, [company]);
+
+  const handleSubmit = async () => {
+    if (!company) return;
+    setIsSaving(true);
+    try {
+      await updateCompanySettings(company.id, {
+        name,
+        email,
+        phone,
+        language,
+        ai_prompt: aiPrompt,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["company", company.id] });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <Card>
@@ -21,7 +57,7 @@ export function CompanySettingsForm() {
         </div>
         <div>
           <CardTitle>Компания</CardTitle>
-          <CardDescription>Данные берутся из GET /companies/{"{id}"}</CardDescription>
+          <CardDescription>Данные берутся из GET /companies/&#123;id&#125;</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -30,44 +66,34 @@ export function CompanySettingsForm() {
           {isLoading ? (
             <Skeleton className="h-10 w-full" />
           ) : (
-            <Input id="company-name" value={company?.name ?? ""} readOnly disabled />
+            <Input id="company-name" value={name} onChange={(e) => setName(e.target.value)} />
           )}
-          <p className="text-xs text-muted-foreground">
-            Название сейчас только для чтения — на backend нет PATCH /companies/{"{id}"}.
-          </p>
         </div>
-
-        <TodoBackendNotice>
-          TODO(backend): модель <code>Company</code> в{" "}
-          <code>app/database/models/domain.py</code> не содержит полей email, phone, language или
-          prompt, а эндпоинта для обновления компании тоже нет. Поля ниже задизейблены до появления
-          соответствующего API.
-        </TodoBackendNotice>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>Email компании</Label>
-            <Input placeholder="Пока недоступно" disabled />
+            <Label htmlFor="company-email">Email компании</Label>
+            <Input id="company-email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Телефон</Label>
-            <Input placeholder="Пока недоступно" disabled />
+            <Label htmlFor="company-phone">Телефон</Label>
+            <Input id="company-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label>Язык ответов AI</Label>
-          <Input placeholder="Пока недоступно" disabled />
+          <Label htmlFor="company-language">Язык ответов AI</Label>
+          <Input id="company-language" value={language} onChange={(e) => setLanguage(e.target.value)} />
         </div>
 
         <div className="space-y-2">
-          <Label>Системный промпт</Label>
-          <Textarea placeholder="Пока недоступно" disabled rows={4} />
+          <Label htmlFor="company-prompt">Системный промпт</Label>
+          <Textarea id="company-prompt" value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} rows={4} />
         </div>
 
         <div className="flex justify-end">
-          <Button disabled title="Нет PATCH /companies/{id} на backend">
-            Сохранить
+          <Button onClick={handleSubmit} disabled={isSaving || isLoading}>
+            {isSaving ? "Сохранение..." : "Сохранить"}
           </Button>
         </div>
       </CardContent>

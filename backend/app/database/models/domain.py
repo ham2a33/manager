@@ -34,6 +34,10 @@ class Company(Base):
     slug: Mapped[Optional[str]] = mapped_column(String(120), nullable=True, unique=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="active")
+    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    language: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="en")
+    ai_prompt: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
@@ -47,12 +51,27 @@ class Company(Base):
     audit_logs: Mapped[list["AuditLog"]] = relationship(back_populates="company")
     ai_providers: Mapped[list["AIProvider"]] = relationship(back_populates="company")
 
-    def __init__(self, name: str, slug: Optional[str] = None, description: Optional[str] = None, status: str = "active", id: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        name: str,
+        slug: Optional[str] = None,
+        description: Optional[str] = None,
+        status: str = "active",
+        email: Optional[str] = None,
+        phone: Optional[str] = None,
+        language: Optional[str] = "en",
+        ai_prompt: Optional[str] = "",
+        id: Optional[str] = None,
+    ) -> None:
         self.id = id or new_id()
         self.name = name
         self.slug = slug
         self.description = description
         self.status = status
+        self.email = email
+        self.phone = phone
+        self.language = language
+        self.ai_prompt = ai_prompt
         self.created_at = now()
         self.updated_at = self.created_at
 

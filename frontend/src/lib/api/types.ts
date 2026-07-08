@@ -1,7 +1,5 @@
 /**
- * These types are a direct mirror of backend/app/api/v1/schemas.py and
- * backend/app/database/models/domain.py. Do NOT add fields that do not
- * exist on the backend - keep this file in sync with the Python source.
+ * These types mirror the backend API contracts under backend/app/api/v1/schemas.py.
  */
 
 export type ChannelType = "telegram" | "instagram" | "whatsapp" | "website";
@@ -23,7 +21,15 @@ export interface LoginResponse {
 export interface CompanyResponse {
   id: string;
   name: string;
+  slug?: string | null;
+  description?: string | null;
+  status?: string;
+  email?: string | null;
+  phone?: string | null;
+  language?: string | null;
+  ai_prompt?: string | null;
   created_at: string;
+  updated_at?: string | null;
 }
 
 // ---- conversation.py ----
@@ -125,13 +131,6 @@ export interface WebhookMessage {
   text: string;
 }
 
-/**
- * The models below (Client, ChannelRecord/settings) exist in
- * backend/app/database/models/domain.py but currently have NO exposed
- * REST endpoint under backend/app/api/v1/*. They are kept here only so the
- * frontend has a stable shape to code against once the backend team adds
- * the routes. See src/lib/api/customers.ts and src/lib/api/settings.ts.
- */
 export interface ClientRecord {
   id: string;
   company_id: string;
