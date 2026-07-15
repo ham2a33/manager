@@ -102,7 +102,27 @@ class KnowledgeResponse(BaseModel):
     id: str
     title: str
     content: str
+    source_type: str = "manual"
+    original_filename: Optional[str] = None
     created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class KnowledgeChunkResponse(BaseModel):
+    id: str
+    document_id: str
+    chunk_index: int
+    content: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class KnowledgeChunkSearchResult(BaseModel):
+    document: KnowledgeResponse
+    chunk: KnowledgeChunkResponse
+    score: float
 
 
 class ClientCreate(BaseModel):

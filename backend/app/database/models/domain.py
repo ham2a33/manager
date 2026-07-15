@@ -178,32 +178,71 @@ class KnowledgeDocument(Base):
     company_id: Mapped[str] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    source_type: Mapped[str] = mapped_column(String(20), default="manual")
+    original_filename: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
     company: Mapped[Company] = relationship(back_populates="knowledge_documents")
-    chunks: Mapped[list["KnowledgeChunk"]] = relationship(back_populates="document", cascade="all, delete-orphan")
+    chunks: Mapped[list["KnowledgeChunk"]] = relationship(
+        back_populates="document",
+        cascade="all, delete-orphan",
+        order_by="KnowledgeChunk.chunk_index",
+    )
 
-    def __init__(self, company_id: str, title: str, content: str, id: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        company_id: str,
+        title: str,
+        content: str,
+        source_type: str = "manual",
+        original_filename: Optional[str] = None,
+        id: Optional[str] = None,
+    ) -> None:
         self.id = id or new_id()
         self.company_id = company_id
         self.title = title
         self.content = content
+        self.source_type = source_type
+        self.original_filename = original_filename
         self.created_at = now()
         self.updated_at = self.created_at
 
 
 class KnowledgeChunk(Base):
     __tablename__ = "knowledge_chunks"
-    __table_args__ = (Index("ix_knowledge_chunks_document_id", "document_id"),)
+    __table_args__ = (
+        Index("ix_knowledge_chunks_document_id", "document_id"),
+        Index("ix_knowledge_chunks_company_id", "company_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     document_id: Mapped[str] = mapped_column(ForeignKey("knowledge_documents.id", ondelete="CASCADE"), nullable=False)
+    company_id: Mapped[str] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
+    chunk_index: Mapped[int] = mapped_column(default=0)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    # Reserved for future RAG metadata (page number, language, category, Qdrant point id, ...)
     metadata_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
     document: Mapped[KnowledgeDocument] = relationship(back_populates="chunks")
+
+    def __init__(
+        self,
+        document_id: str,
+        company_id: str,
+        chunk_index: int,
+        content: str,
+        metadata_json: Optional[str] = None,
+        id: Optional[str] = None,
+    ) -> None:
+        self.id = id or new_id()
+        self.document_id = document_id
+        self.company_id = company_id
+        self.chunk_index = chunk_index
+        self.content = content
+        self.metadata_json = metadata_json
+        self.created_at = now()
 
 
 class Lead(Base):

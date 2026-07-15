@@ -100,11 +100,29 @@ export interface KnowledgeSearchRequest {
   limit?: number;
 }
 
+export type KnowledgeSourceType = "manual" | "pdf" | "docx" | "txt" | "md";
+
 export interface KnowledgeResponse {
   id: string;
   title: string;
   content: string;
+  source_type: KnowledgeSourceType;
+  original_filename: string | null;
   created_at: string;
+}
+
+export interface KnowledgeChunkResponse {
+  id: string;
+  document_id: string;
+  chunk_index: number;
+  content: string;
+  created_at: string;
+}
+
+export interface KnowledgeChunkSearchResult {
+  document: KnowledgeResponse;
+  chunk: KnowledgeChunkResponse;
+  score: number;
 }
 
 // ---- statistics.py ----

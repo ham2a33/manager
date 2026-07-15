@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useKnowledgeList, useKnowledgeSearch } from "@/hooks/useKnowledge";
 import { KnowledgeUploadDialog } from "@/components/knowledge/knowledge-upload-dialog";
@@ -51,7 +52,7 @@ export function KnowledgeList() {
           <Input
             value={query}
             onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Поиск по базе знаний (semantic search)"
+            placeholder="Поиск по базе знаний"
             className="pl-8"
           />
         </div>
@@ -84,7 +85,14 @@ export function KnowledgeList() {
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <FileText className="h-4 w-4" />
                 </div>
-                <span className="text-[11px] text-muted-foreground">{formatDate(doc.created_at)}</span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="text-[11px] text-muted-foreground">{formatDate(doc.created_at)}</span>
+                  {doc.source_type !== "manual" && (
+                    <Badge variant="secondary" className="uppercase">
+                      {doc.source_type}
+                    </Badge>
+                  )}
+                </div>
               </div>
               <div>
                 <p className="line-clamp-1 text-sm font-semibold">{doc.title}</p>
